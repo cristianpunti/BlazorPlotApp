@@ -1,0 +1,161 @@
+﻿@page "/flows"
+@rendermode InteractiveWebAssembly
+
+@using ScottPlot
+@using ScottPlot.AxisPanels
+@using System.Globalization
+@using ScottPlot.Blazor
+
+<h1>Flows</h1>
+
+<BlazorPlot @ref="blazorPlot" Style="width: 600px; height: 400px;" />
+
+@code {
+    BlazorPlot blazorPlot = new();
+
+    // Arrays predefinidos para ticks
+    double[] xsTicks = { 0, 500, 1000, 1500, 2000 };
+    double[] ysLeftTicks = { 0, 155.350, 310.700, 466.050, 621.400 };
+    double[] ysRightTicks = { 0, 50, 100, 150, 200 };
+
+    private DateTime currentTime;
+
+    private System.Threading.Timer? AddNewDataTimer;
+    private System.Threading.Timer? UpdatePlotTimer;
+
+    // Loggers dinámicos
+    ScottPlot.Plottables.DataLogger? loggerFlow;
+    ScottPlot.Plottables.DataLogger? loggerSpeed;
+
+    // Simuladores de datos dinámicos
+    readonly ScottPlot.DataGenerators.RandomWalker walkerFlow = new(2, multiplier: 1000);
+    readonly ScottPlot.DataGenerators.RandomWalker walkerSpeed = new(1, multiplier: 1000);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var plt = blazorPlot.Plot;
+
+
+            // ===== EJE Y IZQUIERDO (Flujo) =====
+            var yLeftFlow = (LeftAxis)plt.Axes.Left;
+            yLeftFlow.LabelText = "Volumetric Flow [m³/h]";
+            yLeftFlow.LabelFontSize = 12;
+            yLeftFlow.LabelFontColor = Colors.Green;
+            yLeftFlow.MinimumSize = 70;
+            yLeftFlow.SetTicks(
+                ysLeftTicks,
+                ysLeftTicks.Select(v => v == 0 ? "0" : v.ToString("N3", CultureInfo.InvariantCulture).Replace(",", ".")).ToArray()
+            );
+            yLeftFlow.Min = ysLeftTicks.Min();
+            yLeftFlow.Max = ysLeftTicks.Max();
+
+            // ===== EJE Y DERECHO (Velocidad) =====
+            var yRightSpeed = plt.Axes.Left;
+            yRightSpeed.Label.Text = "Speed [rpm]";
+            yRightSpeed.Label.FontSize = 12;
+            yRightSpeed.Label.ForeColor = Colors.Violet;
+            yRightSpeed.MinimumSize = 50;
+            yRightSpeed.SetTicks(
+                ysRightTicks,
+                ysRightTicks.Select(v => v.ToString()).ToArray()
+            );
+
+            yRightSpeed.FrameLineStyle.IsVisible = false;
+
+            yRightSpeed.Min = ysRightTicks.Min();
+            yRightSpeed.Max = ysRightTicks.Max();
+
+
+            // ===== EJE X (Tiempo) =====
+            var xAxis = (BottomAxis)plt.Axes.Bottom;
+            xAxis.LabelText = "Time [minutes]";
+            xAxis.SetTicks(
+                xsTicks,
+                xsTicks.Select(v => v.ToString()).ToArray()
+            );
+            xAxis.Min = xsTicks.Min();
+            xAxis.Max = xsTicks.Max();
+            xAxis.FrameLineStyle.IsVisible = true;
+            xAxis.FrameLineStyle.Color = Colors.Black;
+
+            plt.Axes.Right.IsVisible = true;
+
+
+            // Márgenes para que los ejes no se solapen
+            plt.Axes.Margins(left: 180, right: 80, top: 10, bottom: 40);
+
+            xAxis.Min = xsTicks.Min();
+            xAxis.Max = xsTicks.Max();
+
+            yLeftFlow.Min = ysLeftTicks.Min();
+            yLeftFlow.Max = ysLeftTicks.Max();
+
+            yRightSpeed.Min = ysRightTicks.Min();
+            yRightSpeed.Max = ysRightTicks.Max();
+
+
+            // ===== LOGGERS DINÁMICOS =====
+            loggerFlow = plt.Add.DataLogger();
+            loggerFlow.Axes.YAxis = yLeftFlow;
+            loggerFlow.Color = Colors.DodgerBlue;
+
+            loggerSpeed = plt.Add.DataLogger();
+            loggerSpeed.Axes.YAxis = yRightSpeed;
+            loggerSpeed.Color = Colors.Orange;
+
+            // Datos iniciales
+            int count = 3000;
+            loggerFlow.Add(walkerFlow.Next(count));
+            loggerSpeed.Add(walkerSpeed.Next(count));
+
+            blazorPlot.Refresh();
+
+            AddNewDataTimer = new System.Threading.Timer(
+            e =>
+            {
+                InvokeAsync(() =>
+                {
+                    OnTimerCallback();
+                });
+            },
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(1)
+            );// In De
+
+            UpdatePlotTimer = new System.Threading.Timer(
+                e =>
+                {
+                    InvokeAsync(() =>
+                    {
+                        OnTimerCallback2();
+                    });
+                },
+                null,
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(1)
+                );
+
+
+
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+
+    private  Task OnTimerCallback()
+    {
+        const int count = 5;
+        loggerFlow?.Add(walkerFlow.Next(count));
+        loggerSpeed?.Add(walkerSpeed.Next(count));
+        return Task.CompletedTask;
+    }
+
+    private Task OnTimerCallback2()
+    {
+        blazorPlot.Refresh();
+        return Task.CompletedTask;
+    }
+}
