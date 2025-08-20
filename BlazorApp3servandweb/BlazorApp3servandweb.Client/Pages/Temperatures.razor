@@ -2,8 +2,8 @@
 @rendermode InteractiveWebAssembly
 
 @using ScottPlot
+@using ScottPlot.AxisPanels
 @using ScottPlot.Blazor
-@using System.Linq
 
 <h1>Temperature</h1>
 
@@ -12,52 +12,111 @@
 @code {
     BlazorPlot blazorPlot = new();
 
-    protected override void OnAfterRender(bool firstRender)
+    // Datos Temperatura eje Y
+    double[] ys = new double[] { 0, 40, 80, 120, 160 };
+    // double[] ys = new double[] {  0, 5000, 10000, 15000, 20000 };
+
+
+    ScottPlot.Plottables.DataLogger? loggerTemperature;
+
+    private System.Threading.Timer? AddNewDataTimer;
+    private System.Threading.Timer? UpdatePlotTimer;
+   
+
+
+
+    readonly ScottPlot.DataGenerators.RandomWalker walkerTemp = new(1, multiplier: 10);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var plt = blazorPlot.Plot;
 
-            // Datos eje X (tiempo)
-            double[] xs = { 0, 50, 100, 150, 200 };
-
-            // Datos Temperatura eje Y
-            double[] ys = { 0, 38, 75, 113, 150 };
-
-            
-            // Configurar eje Y
-
-            var yLeft = plt.Axes.Left;
-            yLeft.Label.Text = "Temperature [°C]";
-            yLeft.Label.FontSize = 12;
+            // ===== EJE Y =====
+            var yLeft = (LeftAxis)plt.Axes.Left;
+            yLeft.LabelText = "Temperature [°C]";
+            yLeft.LabelFontSize = 12;
             yLeft.MinimumSize = 50;
-            yLeft.Label.ForeColor = Colors.Blue;
-            yLeft.SetTicks(ys, ys.Select(v => v.ToString()).ToArray());
+            yLeft.LabelFontColor = Colors.Blue;
 
-            // Añadir scatter plot (línea)
-            var scatter = plt.Add.Scatter(xs, ys);
-            scatter.Color = Colors.DarkRed;
-            scatter.LineWidth = 2;
-            scatter.MarkerSize = 0; 
-            
-            
-            // Configurar eje X
-            var xAxis = plt.Axes.Bottom;
-            xAxis.Label.Text = "Time [minutes]";
-           
+            yLeft.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
+              positions: ys,
+              labels:  ys.Select(v => v.ToString()).ToArray());
+
+
+            // yLeft.Min = 38;
+            // yLeft.Max = 152;
+
+            // ===== EJE X =====
+            var xAxis = (BottomAxis)plt.Axes.Bottom;
+            xAxis.LabelText = "Time [minutes]";
             xAxis.FrameLineStyle.IsVisible = true;
             xAxis.FrameLineStyle.Color = Colors.Black;
 
-            // Ajustar márgenes para que las etiquetas quepan sin cortarse
+
             plt.Axes.Margins(left: 100, right: 20, top: 10, bottom: 40);
 
-            xAxis.Min = xs.Min();
-            xAxis.Max = xs.Max();
 
-            yLeft.Min = ys.Min();
-            yLeft.Max = ys.Max();
+
+            // ===== LOGGER =====
+            loggerTemperature = plt.Add.DataLogger();
+            loggerTemperature.Axes.YAxis = yLeft;
+            loggerTemperature.Color = Colors.DodgerBlue;
 
             blazorPlot.Refresh();
+
+            // Lanzar tarea periódica
+            // _ = UpdateLoop();
+
+            // Datos iniciales
+            int count = 3000;
+            loggerTemperature.Add(walkerTemp.Next(count));
+        
+
+
+            blazorPlot.Refresh();
+            AddNewDataTimer = new System.Threading.Timer(
+                     e =>
+                     {
+                         InvokeAsync(() =>
+                         {
+                             OnTimerCallback();
+                         });
+                     },
+                     null,
+                     TimeSpan.Zero,
+                     TimeSpan.FromSeconds(1)
+                     );
+
+            UpdatePlotTimer = new System.Threading.Timer(
+                e =>
+                {
+                    InvokeAsync(() =>
+                    {
+                        OnTimerCallback2();
+                    });
+                },
+                null,
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(1)
+                );
         }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private Task OnTimerCallback()
+    {
+        const int count = 5;
+        loggerTemperature?.Add(walkerTemp.Next(count));
+    
+        return Task.CompletedTask;
+    }
+
+    private Task OnTimerCallback2()
+    {
+        blazorPlot.Refresh();
+        return Task.CompletedTask;
     }
 }

@@ -2,9 +2,9 @@
 @rendermode InteractiveWebAssembly
 
 @using ScottPlot
-@using ScottPlot.Blazor
-@using System.Linq
+@using ScottPlot.AxisPanels
 @using System.Globalization
+@using ScottPlot.Blazor
 
 <h1>Fans</h1>
 
@@ -13,63 +13,76 @@
 @code {
     BlazorPlot blazorPlot = new();
 
-    protected override void OnAfterRender(bool firstRender)
+    // double[] ysLeft = { 0, 155.350, 310.700, 466.050, 621.400 };
+    // double[] ysLeft2 = { 0, 78, 155, 233, 310 };
+
+    double[] ysLeft = new double[] { 0, 10.000, 20.000, 30.000 };
+    double[] ysLeft2 = new double[] { 0, 50, 100, 150, 200 };
+
+
+    private System.Threading.Timer? AddNewDataTimer;
+    private System.Threading.Timer? UpdatePlotTimer;
+
+    ScottPlot.Plottables.DataLogger? loggerFlow;
+    ScottPlot.Plottables.DataLogger? loggerSpeed;
+
+    readonly ScottPlot.DataGenerators.RandomWalker walkerFlow = new(1, multiplier: 1.000);
+    readonly ScottPlot.DataGenerators.RandomWalker walkerSpeed = new(1, multiplier: 10);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var plt = blazorPlot.Plot;
 
-            
-            double[] xs = { 0, 500, 1000, 1500, 2000 };
-            double[] ysLeft = { 0, 155.350, 310.700, 466.050, 621.400 };
-            double[] ysLeft2 = { 0, 78, 155, 233, 310 };
-            var leftLine = plt.Add.Scatter(xs, ysLeft);
 
-            var yLeft2 = plt.Axes.AddLeftAxis();
-            var leftLine2 = plt.Add.Scatter(xs, ysLeft2);
-            leftLine2.Axes.YAxis = yLeft2;
+            // double[] xs = { 0, 500, 1000, 1500, 2000 };
+            // double[] ysLeft = { 0, 155.350, 310.700, 466.050, 621.400 };
+            // double[] ysLeft2 = { 0, 78, 155, 233, 310 };
+            // var leftLine = plt.Add.Scatter(xs, ysLeft);
 
-            var yLeft = plt.Axes.Left;
-            yLeft.Label.Text = "Volumetricflow";
-            yLeft.Label.FontSize = 12;
-            yLeft.Label.ForeColor = Colors.Green;
-            yLeft.MinimumSize = 70;
-            yLeft.SetTicks(
-                ysLeft,
-                ysLeft.Select(v => v == 0 ? "0" : v.ToString("N3", CultureInfo.InvariantCulture).Replace(",", ".")).ToArray()
-            );
+            // var yLeft2 = plt.Axes.AddLeftAxis();
+            // var leftLine2 = plt.Add.Scatter(xs, ysLeft2);
+            // leftLine2.Axes.YAxis = yLeft2;
+
+            // ===== EJE Y IZQUIERDO (Flujo) =====
+
+            LeftAxis yLeftFlow = (LeftAxis)plt.Axes.Left; 
+            yLeftFlow.LabelText = "Volumetricflow";
+            yLeftFlow.LabelFontSize = 12;
+            yLeftFlow.LabelFontColor = Colors.Green;
+            yLeftFlow.MinimumSize = 80;
+            yLeftFlow.TickGenerator = new ScottPlot.TickGenerators.NumericManual(positions: ysLeft,
+            labels: ysLeft.Select(v => v == 0 ? "0" : v.ToString("N3", CultureInfo.InvariantCulture).Replace(",", ".")).ToArray());
 
 
-            yLeft.Min = ysLeft.Min();
-            yLeft.Max = ysLeft.Max();
+            // yLeft.Min = ysLeft.Min();
+            // yLeft.Max = ysLeft.Max();
 
-            var volLine = plt.Add.Scatter(xs, ysLeft);
-            volLine.Color = Colors.DodgerBlue;
-            volLine.LineWidth = 2;
-            volLine.MarkerSize = 0;
-            // volLine.Axes.YAxis = yLeft; // aseguramos que usa este eje
 
-            yLeft2.LabelText = "Speed [rpm]";
-            yLeft2.LabelFontSize = 12;
-            yLeft2.LabelFontColor = Colors.DeepPink;
-            yLeft2.MinimumSize = 50;
-            yLeft2.SetTicks(ysLeft2, ysLeft2.Select(v => v.ToString()).ToArray());
-            yLeft2.FrameLineStyle.IsVisible = false;
 
-            yLeft2.Min = ysLeft2.Min();
-            yLeft2.Max = ysLeft2.Max();
+            // // ===== EJE Y SECUNDARIO INDEPENDIENTE (Velocidad) =====
+            LeftAxis yRightSpeed = plt.Axes.AddLeftAxis();
+            yRightSpeed.LabelText = "Massflow [tn/h]";
+            yRightSpeed.LabelFontSize = 12;
+            yRightSpeed.LabelFontColor = Colors.Violet;
+            yRightSpeed.MinimumSize = 50;
+            yRightSpeed.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
+            positions:    ysLeft2,
+            labels:       ysLeft2.Select(v => v.ToString()).ToArray());
+            yRightSpeed.FrameLineStyle.IsVisible = false;
 
-            var massLine = plt.Add.Scatter(xs, ysLeft2);
-            massLine.Color = Colors.Orange;
-            massLine.LineWidth = 2;
-            massLine.MarkerSize = 0;
+            // yLeft2.Min = ysLeft2.Min();
+            // yLeft2.Max = ysLeft2.Max();
+
             // massLine.Axes.YAxis = yLeft2;
 
-            var xAxis = plt.Axes.Bottom;
-            xAxis.Label.Text = "Time [minutes]";
-            xAxis.SetTicks(xs, xs.Select(v => v.ToString()).ToArray());
-            xAxis.Min = xs.Min();
-            xAxis.Max = xs.Max();
+            // // ===== EJE X =====
+            BottomAxis xAxis = (BottomAxis)plt.Axes.Bottom;
+            xAxis.LabelText = "Time [minutes]";
+           /*  xAxis.SetTicks(xs, xs.Select(v => v.ToString()).ToArray()) */;
+            // xAxis.Min = xs.Min();
+            // xAxis.Max = xs.Max();
             xAxis.FrameLineStyle.IsVisible = true;
             xAxis.FrameLineStyle.Color = Colors.Black;
 
@@ -87,22 +100,80 @@
             plt.Axes.Margins(left: 180, right: 10, top: 10, bottom: 40);
 
 
-            xAxis.Min = xs.Min();
-            xAxis.Max = xs.Max();
+            // xAxis.Min = xs.Min();
+            // xAxis.Max = xs.Max();
 
 
 
-            yLeft.Min = ysLeft.Min();
-            yLeft.Max = ysLeft.Max();
+            // yLeft.Min = ysLeft.Min();
+            // yLeft.Max = ysLeft.Max();
 
-            yLeft2.Min = ysLeft2.Min();
-            yLeft2.Max = ysLeft2.Max();
+            // yLeft2.Min = ysLeft2.Min();
+            // yLeft2.Max = ysLeft2.Max();
 
 
             // plt.Legend.IsVisible = true;
             // plt.Legend.Alignment = Alignment.UpperRight;
 
+            // ===== LOGGERS =====
+            loggerFlow = plt.Add.DataLogger();
+            loggerFlow.Axes.YAxis = yLeftFlow;
+            loggerFlow.Color = Colors.DodgerBlue;
+
+            loggerSpeed = plt.Add.DataLogger();
+            loggerSpeed.Axes.YAxis = yRightSpeed;
+            loggerSpeed.Color = Colors.Orange;
+
+
+            // Datos iniciales
+            int count = 3000;
+            loggerFlow.Add(walkerFlow.Next(count));
+            loggerSpeed.Add(walkerSpeed.Next(count));
+
+
             blazorPlot.Refresh();
+
+            AddNewDataTimer = new System.Threading.Timer(
+                  e =>
+                  {
+                      InvokeAsync(() =>
+                      {
+                          OnTimerCallback();
+                      });
+                  },
+                  null,
+                  TimeSpan.Zero,
+                  TimeSpan.FromSeconds(1)
+                  );
+
+            UpdatePlotTimer = new System.Threading.Timer(
+                e =>
+                {
+                    InvokeAsync(() =>
+                    {
+                        OnTimerCallback2();
+                    });
+                },
+                null,
+                TimeSpan.Zero,
+                TimeSpan.FromSeconds(1)
+                );
         }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private Task OnTimerCallback()
+    {
+        const int count = 5;
+        loggerFlow?.Add(walkerFlow.Next(count));
+        loggerSpeed?.Add(walkerSpeed.Next(count));
+        return Task.CompletedTask;
+    }
+
+    private Task OnTimerCallback2()
+    {
+        blazorPlot.Refresh();
+        return Task.CompletedTask;
     }
 }
