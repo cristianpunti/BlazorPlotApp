@@ -26,7 +26,7 @@
     ScottPlot.Plottables.DataLogger? loggerFlow;
     ScottPlot.Plottables.DataLogger? loggerSpeed;
 
-    readonly ScottPlot.DataGenerators.RandomWalker walkerFlow = new(1, multiplier: 1.000);
+    readonly ScottPlot.DataGenerators.RandomWalker walkerFlow = new(2, multiplier: 1.000);
     readonly ScottPlot.DataGenerators.RandomWalker walkerSpeed = new(1, multiplier: 10);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
