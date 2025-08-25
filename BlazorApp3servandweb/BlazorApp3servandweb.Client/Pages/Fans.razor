@@ -6,12 +6,13 @@
 @using System.Globalization
 @using ScottPlot.Blazor
 
-<h1>Fans</h1>
-
+<h1 style="text-align:center;">Fans</h1>
 <BlazorPlot @ref="blazorPlot" Style="width: 800px; height: 500px;" />
 
 @code {
     BlazorPlot blazorPlot = new();
+
+
 
     // double[] ysLeft = { 0, 155.350, 310.700, 466.050, 621.400 };
     // double[] ysLeft2 = { 0, 78, 155, 233, 310 };
@@ -34,7 +35,7 @@
         if (firstRender)
         {
             var plt = blazorPlot.Plot;
-
+            PlotTheme.ApplyDarkTheme(plt);
 
             // double[] xs = { 0, 500, 1000, 1500, 2000 };
             // double[] ysLeft = { 0, 155.350, 310.700, 466.050, 621.400 };
@@ -54,8 +55,9 @@
             yLeftFlow.MinimumSize = 80;
             yLeftFlow.TickGenerator = new ScottPlot.TickGenerators.NumericManual(positions: ysLeft,
             labels: ysLeft.Select(v => v == 0 ? "0" : v.ToString("N3", CultureInfo.InvariantCulture).Replace(",", ".")).ToArray());
-
-
+            
+            yLeftFlow.TickLabelStyle.ForeColor = Colors.Green;               // Color de las marcas del eje izquierdo
+                  // Color de los números del eje izquierdo
             // yLeft.Min = ysLeft.Min();
             // yLeft.Max = ysLeft.Max();
 
@@ -70,6 +72,7 @@
             yRightSpeed.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
             positions:    ysLeft2,
             labels:       ysLeft2.Select(v => v.ToString()).ToArray());
+            yRightSpeed.TickLabelStyle.ForeColor = Colors.Violet;
             yRightSpeed.FrameLineStyle.IsVisible = false;
 
             // yLeft2.Min = ysLeft2.Min();
@@ -85,7 +88,7 @@
             // xAxis.Max = xs.Max();
             xAxis.FrameLineStyle.IsVisible = true;
             xAxis.FrameLineStyle.Color = Colors.Black;
-
+            xAxis.TickLabelStyle.ForeColor = Colors.White;
             plt.Axes.Right.IsVisible = true;
 
             // Líneas de los ejes visibles

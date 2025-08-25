@@ -32,6 +32,9 @@
         if (firstRender)
         {
             var plt = blazorPlot.Plot;
+
+            PlotTheme.ApplyDarkTheme(plt);
+
             // ===== EJE Y IZQUIERDO (Flujo) =====
 
             LeftAxis yLeftFlow = (LeftAxis)plt.Axes.Left;

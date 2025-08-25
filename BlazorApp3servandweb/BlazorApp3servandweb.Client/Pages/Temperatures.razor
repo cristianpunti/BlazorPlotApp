@@ -32,6 +32,7 @@
         if (firstRender)
         {
             var plt = blazorPlot.Plot;
+            PlotTheme.ApplyDarkTheme(plt);
 
             // ===== EJE Y =====
             var yLeft = (LeftAxis)plt.Axes.Left;
